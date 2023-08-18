@@ -6,7 +6,7 @@ To use the Merkle tree, you can create a slice of transactions and build the tre
 ```go
 import (
     "fmt"
-    "github.com/username/repo/merkle"
+    "github.com/naveed949/merkle-builder/merkle"
 )
 
 func main() {
