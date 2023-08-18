@@ -20,24 +20,16 @@ func main() {
 		merkle.NewTransaction("O", "P", 800),
 	}
 
-	// create a slice of hashes
-	var hashes []string = make([]string, len(transactions))
-
-	// iterate over the transactions and hash each one
-	for i, transaction := range transactions {
-		hashes[i] = transaction.Hash()
-	}
-
-	// build the Merkle tree
-	merkleRoot := merkle.Build(hashes)
-
-	// print the Merkle tree root
-	fmt.Println("Merkle tree root:", merkleRoot)
-
 	// build the Merkle tree from the transactions
 	merkleRootFromTransactions := merkle.BuildFromTransactions(transactions)
 
 	// print the Merkle tree root
 	fmt.Println("Merkle tree root from transactions:", merkleRootFromTransactions)
+
+	// build the Merkle tree from the transactions using goroutines and channels
+	merkleRootFromTransactionsConcurrent := merkle.BuildFromTransactionsConcurrent(transactions)
+
+	// print the Merkle tree root
+	fmt.Println("Merkle tree root from transactions using goroutines and channels:", merkleRootFromTransactionsConcurrent)
 
 }
