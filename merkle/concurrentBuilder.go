@@ -5,10 +5,16 @@ import (
 	"encoding/hex"
 )
 
+// define struct of type Hash that has a value of hash and index of hash to ensure order is maintained upon receiving from channel
+type Hash struct {
+	Value string
+	Index int
+}
+
 // function to construct a Merkle tree from a slice of hashes using goroutines and channels
 func BuildConcurrent(hashes []string) []string {
 	// create a channel of strings to hold the hashes
-	hashChannel := make(chan string) // unbuffered channel
+	hashChannel := make(chan Hash) // unbuffered channel
 
 	// if the number of hashes is odd, duplicate the last hash
 	if len(hashes)%2 != 0 {
@@ -17,28 +23,32 @@ func BuildConcurrent(hashes []string) []string {
 
 	// iterate over the hashes in steps of 2
 	for i := 0; i < len(hashes); i += 2 {
+		index := i
+		if i != 0 {
+			index = i / 2
+		}
 		// launch a goroutine to concatenate the two hashes
-		go func(firstHash string, secondHash string) { //TODO: which routine is executed first is not guaranteed
+		go func(firstHash string, secondHash string, index int) {
 			// concatenate the two hashes
 			concatenatedHashes := firstHash + secondHash
 
 			// hash the concatenated hashes using the SHA256 algorithm
 			hash := sha256.Sum256([]byte(concatenatedHashes))
 			// send the hash of hashes to the channel
-			hashChannel <- hex.EncodeToString(hash[:])
-		}(hashes[i], hashes[i+1])
+			hashChannel <- Hash{Value: hex.EncodeToString(hash[:]), Index: index}
+		}(hashes[i], hashes[i+1], index)
 	}
 
 	// create a slice of strings to hold the new hashes
-	var newHashes []string
+	var newHashes []string = make([]string, len(hashes)/2)
 
 	// iterate over the hashes in steps of 2
 	for i := 0; i < len(hashes); i += 2 {
 		// receive the hash of hashes from the channel
-		hashOfHashes := <-hashChannel
+		hash := <-hashChannel
 
 		// append the hash to the slice of hashes
-		newHashes = append(newHashes, hashOfHashes)
+		newHashes[hash.Index] = hash.Value
 	}
 
 	// if the number of hashes is greater than 1, recursively call the function
@@ -53,18 +63,18 @@ func BuildConcurrent(hashes []string) []string {
 // function to construct a Merkle tree from a slice of transactions using goroutines and channels
 func BuildFromTransactionsConcurrent(transactions []*Transaction) []string {
 	// create a channel of strings to hold the hashes
-	hashChannel := make(chan string) // unbuffered channel
+	hashChannel := make(chan Hash) // unbuffered channel
 
 	// iterate over the transactions
-	for _, transaction := range transactions {
+	for index, transaction := range transactions {
 		// launch a goroutine to hash the transaction using the SHA256 algorithm
-		go func(transaction *Transaction) {
-			hashChannel <- transaction.Hash()
-		}(transaction)
+		go func(transaction *Transaction, index int) {
+			hashChannel <- Hash{Value: transaction.Hash(), Index: index}
+		}(transaction, index)
 	}
 
 	// create a slice of strings to hold the hashes
-	var hashes []string
+	var hashes []string = make([]string, len(transactions))
 
 	// iterate over the transactions
 	for range transactions {
@@ -72,7 +82,7 @@ func BuildFromTransactionsConcurrent(transactions []*Transaction) []string {
 		hash := <-hashChannel
 
 		// append the hash to the slice of hashes
-		hashes = append(hashes, hash)
+		hashes[hash.Index] = hash.Value
 	}
 
 	// construct the Merkle tree from the hashes
